@@ -1,0 +1,12 @@
+# Core
+torch
+transformers
+datasets
+tokenizers
+accelerate
+
+# ML utils
+pandas
+numpy
+scikit-learn
+
