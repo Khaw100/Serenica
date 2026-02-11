@@ -18,9 +18,9 @@ logs/
 *.log
 
 # Datasets (RAW / LARGE)
-data/
+# data/
 *.tsv
-*.csv
+# *.csv
 
 # Models (large binaries)
 models/
