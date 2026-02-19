@@ -24,3 +24,11 @@ logs/
 
 # Models (large binaries)
 models/
+
+/models
+*__pycache__
+*data
+.venv
+
+mlartifacts/
+*.db

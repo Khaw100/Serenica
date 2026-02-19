@@ -1,12 +1,8 @@
-# Core
-torch
-transformers
-datasets
-tokenizers
-accelerate
-
-# ML utils
+streamlit
+plotly
 pandas
 numpy
 scikit-learn
-
+matplotlib
+seaborn
+mlflow
