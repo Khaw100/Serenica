@@ -1,15 +1,3 @@
-"""
-ml/suicidal_classifier.py
-
-Model: TF-IDF (word + char ngram) + SGDClassifier
-Format: sklearn Pipeline disimpan sebagai .pkl via joblib
-
-Preprocessing pipeline (sesuai training):
-    1. selective stopword removal  (protected: kata ganti orang)
-    2. clean text                  (lowercase, hapus URL/angka/punctuation)
-    3. lemmatization via spaCy     (PRON → lowercase, lainnya → lemma)
-"""
-
 import re
 import logging
 import joblib
@@ -23,24 +11,6 @@ logger = logging.getLogger(__name__)
 
 
 class SuicidalClassifier:
-    """
-    Binary classifier untuk deteksi suicidal ideation.
-
-    Model: sklearn Pipeline (TF-IDF word+char ngram + SGDClassifier)
-    File : suicide_detection_pipeline.pkl
-
-    Label:
-        0 → non-suicidal
-        1 → suicidal
-
-    Preprocessing (sama persis dengan training):
-        text
-          → selective stopword removal
-          → clean text (lowercase, hapus URL/angka/punct)
-          → spaCy lemmatization (PRON tetap as-is, lainnya di-lemma)
-          → pipeline.predict_proba()
-    """
-
     LABEL_NAMES = ["non-suicidal", "suicidal"]
 
     def __init__(
@@ -50,15 +20,6 @@ class SuicidalClassifier:
         spacy_model: str = "en_core_web_sm",
         batch_size: int = 64,
     ):
-        """
-        Args:
-            model_path  : path ke file .pkl
-            threshold   : confidence threshold untuk label "suicidal"
-                          default 0.8 (hasil threshold tuning)
-                          Turunkan ke 0.6-0.7 jika ingin lebih sensitif.
-            spacy_model : nama spaCy model untuk lemmatization
-            batch_size  : batch size untuk spaCy nlp.pipe() di predict_batch
-        """
         self.model_path = Path(model_path)
         self.threshold  = threshold
         self.batch_size = batch_size
@@ -108,15 +69,11 @@ class SuicidalClassifier:
             import spacy
             return spacy.load(model_name, disable=["parser", "ner"])
 
-    # ── Preprocessing ────────────────────────────────────────────────────────
-
     def _selective_stopword_removal(self, text: str) -> str:
-        """Hapus stopwords kecuali kata ganti orang."""
         words = text.split()
         return " ".join(w for w in words if w not in self._filtered_stopwords)
 
     def _clean_text(self, text: str) -> str:
-        """Lowercase, hapus URL/angka/punctuation."""
         text = text.lower()
         text = re.sub(r"https?://\S+|www\.\S+", "", text)
         text = re.sub(r"\d+", "", text)
@@ -125,11 +82,6 @@ class SuicidalClassifier:
         return text
 
     def _lemmatize_single(self, text: str) -> str:
-        """
-        Lemmatize satu teks.
-        PRON → lowercase as-is, lainnya → lemma lowercase.
-        Sesuai fast_lemma_optimized() di notebook training.
-        """
         doc = self.nlp(text)
         tokens = [
             token.text.lower() if token.pos_ == "PRON"
@@ -139,7 +91,6 @@ class SuicidalClassifier:
         return " ".join(tokens)
 
     def _lemmatize_batch(self, texts: list[str]) -> list[str]:
-        """Lemmatize banyak teks pakai nlp.pipe() — lebih efisien."""
         results = []
         for doc in self.nlp.pipe(texts, batch_size=self.batch_size):
             tokens = [
@@ -151,38 +102,23 @@ class SuicidalClassifier:
         return results
 
     def _preprocess(self, text: str) -> str:
-        """Single text: stopword removal → clean → lemmatize."""
         text = self._selective_stopword_removal(text)
         text = self._clean_text(text)
         text = self._lemmatize_single(text)
         return text
 
     def _preprocess_batch(self, texts: list[str]) -> list[str]:
-        """Batch: stopword + clean dulu, lalu batch lemmatize via nlp.pipe()."""
         partially_cleaned = [
             self._clean_text(self._selective_stopword_removal(t))
             for t in texts
         ]
         return self._lemmatize_batch(partially_cleaned)
 
-    # ── Inference ────────────────────────────────────────────────────────────
-
     def predict(
         self,
         text: str,
         threshold: Optional[float] = None,
     ) -> dict:
-        """
-        Prediksi apakah teks mengandung indikasi suicidal.
-
-        Returns:
-            {
-                "is_suicidal" : bool,
-                "confidence"  : float,
-                "label"       : "suicidal" | "non-suicidal",
-                "scores"      : {"non-suicidal": float, "suicidal": float}
-            }
-        """
         thr     = threshold if threshold is not None else self.threshold
         cleaned = self._preprocess(text)
         proba   = self.pipeline.predict_proba([cleaned])[0]
@@ -204,7 +140,6 @@ class SuicidalClassifier:
         texts: list[str],
         threshold: Optional[float] = None,
     ) -> list[dict]:
-        """Predict batch — pakai nlp.pipe() untuk lemmatization yang efisien."""
         thr     = threshold if threshold is not None else self.threshold
         cleaned = self._preprocess_batch(texts)
         probas  = self.pipeline.predict_proba(cleaned)

@@ -1,0 +1,66 @@
+version: "3.9"
+
+services:
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.9.2
+    container_name: mlflow
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlruns:/mlruns
+      - ./mlartifacts:/mlartifacts
+    environment:
+      - MLFLOW_DISABLE_ENV_CREATION=true
+      - FORWARDED_ALLOW_IPS=*
+      - MLFLOW_HOST_ALLOWLIST=*
+      - GUNICORN_CMD_ARGS=--timeout 300 --workers 2
+    command: >
+      mlflow server
+      --backend-store-uri file:///mlruns
+      --artifacts-destination file:///mlartifacts
+      --host 0.0.0.0
+      --port 5000
+    networks:
+      - serenica-network
+
+  backend:
+    build:
+      context: ./app/backend
+      dockerfile: Dockerfile
+    image: finalproject-backend:latest
+    container_name: serenica-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - PYTHONUNBUFFERED=1
+      - MLFLOW_WAIT_TIMEOUT=90
+    volumes:
+      - ./mlruns:/mlruns
+      - ./mlartifacts:/mlartifacts
+      - ./app/backend/logs:/app/logs
+    depends_on:
+      - mlflow  # ✅ Just wait for start, not healthy
+    restart: unless-stopped
+    networks:
+      - serenica-network
+
+  frontend:
+    build:
+      context: ./app/frontend
+      dockerfile: Dockerfile
+    container_name: serenica-frontend
+    image: finalproject-frontend:latest
+    ports:
+      - "8501:8501"
+    environment:
+      - BACKEND_URL=http://backend:8000
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - serenica-network
+
+networks:
+  serenica-network:
+    driver: bridge

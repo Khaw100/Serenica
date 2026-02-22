@@ -289,11 +289,11 @@ Contoh:
 
     results = {}
 
-    # if args.model in ("emotion", "all"):
-    #     results["emotion"]  = push_emotion_classifier(args.accuracy, args.f1)
+    if args.model in ("emotion", "all"):
+        results["emotion"]  = push_emotion_classifier(args.accuracy, args.f1)
 
-    # if args.model in ("suicidal", "all"):
-    #     results["suicidal"] = push_suicidal_classifier(args.accuracy, args.f1)
+    if args.model in ("suicidal", "all"):
+        results["suicidal"] = push_suicidal_classifier(args.accuracy, args.f1)
 
     if args.model in ("problem", "all"):
         results["problem"]  = push_problem_classifier(args.accuracy, args.f1)

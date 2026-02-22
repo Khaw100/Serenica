@@ -6,3 +6,5 @@ scikit-learn
 matplotlib
 seaborn
 mlflow
+fastapi
+uvicorn[standard]
