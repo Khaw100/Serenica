@@ -24,6 +24,7 @@ logs/
 
 # Models (large binaries)
 models/
+models.zip
 
 /models
 *__pycache__
@@ -33,6 +34,6 @@ models/
 mlartifacts/
 *.db
 
-
+/backend-dummy
 /mlartifacts
 /mlruns

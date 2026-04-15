@@ -117,10 +117,8 @@ def get_matched_psychologists(
         score = compute_match_score(psych, emotion_probs, problem_probs, is_suicidal)
         results.append({**psych, "match": score})
 
-    # Kalau suicidal, Dr. James Tan selalu masuk top hasil
     results.sort(key=lambda x: x["match"], reverse=True)
 
-    # Pastikan crisis specialist muncul kalau is_suicidal
     if is_suicidal:
         crisis_doc = next((p for p in results if "_suicidal_boost" in p["expertise"]), None)
         top = results[:top_n]

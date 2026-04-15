@@ -1,15 +1,4 @@
-"""
-utils/chat_client.py
-Wraps OpenAI and Anthropic APIs for the chat tab.
-Auto-detects provider from the API key prefix.
-"""
-
-
 def get_ai_response(api_key: str, messages: list, system_context: str = "") -> str:
-    """
-    Send messages to OpenAI (sk-...) or Anthropic (sk-ant-...) and return the reply.
-    messages: list of {"role": "user"|"assistant", "content": str}
-    """
     if api_key.startswith("sk-ant-"):
         return _anthropic_response(api_key, messages, system_context)
     else:

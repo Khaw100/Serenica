@@ -87,7 +87,7 @@ with tab1:
             else:
                 st.error("Please write something before reflecting.")
 
-        st.markdown("<br><br>")
+        # st.markdown("<br><br>")
         st.caption("🔒 Your story is private. Serenica does not store personal data.")
 
 
@@ -237,9 +237,9 @@ with tab2:
 with tab3:
     _, col, _ = st.columns([1, 3, 1])
     with col:
-        st.subheader("💬 Chat with AI")
+        st.subheader("💬 Chat with Serenica AI")
 
-        # API key input
+        # ── API Key input ─────────────────────────────────────────
         api_key = st.text_input(
             "OpenAI or Anthropic API Key",
             type="password",
@@ -251,45 +251,120 @@ with tab3:
             st.session_state.api_key = api_key
 
         if not st.session_state.api_key:
-            st.warning("Enter your API key above to enable chat.")
+            st.warning("Masukkan API key di atas untuk mengaktifkan chat.")
             st.stop()
 
-        st.caption("Continue exploring your thoughts with an AI companion.")
+        st.caption("Lanjutkan eksplorasi pikiranmu bersama pendamping AI.")
 
-        # Chat history
+        # ── Build system context ──────────────────────────────────
+        has_result = bool(st.session_state.get("analysis_result"))
+
+        if has_result:
+            result      = st.session_state.analysis_result
+            primary     = result.get("primary_emotion", "unknown")
+            confidence  = result.get("confidence", 0)
+            suicidal    = st.session_state.get("suicidal_result", {})
+            problem     = st.session_state.get("problem_result", {})
+            is_suicidal = suicidal.get("is_suicidal", False)
+
+            top_problems = sorted(problem.items(), key=lambda x: x[1], reverse=True)[:3]
+            problems_str = ", ".join([f"{k} ({v*100:.0f}%)" for k, v in top_problems])
+
+            system_context = f"""You are Serenica, an empathetic and supportive AI mental health companion.
+
+The user has completed a reflection session. Here are their analysis results:
+- Primary emotion detected: {primary} (confidence: {confidence*100:.0f}%)
+- Likely concerns: {problems_str}
+- Risk status: {"⚠️ Suicidal ideation signals detected" if is_suicidal else "No crisis signals detected"}
+- Their story: \"\"\"{st.session_state.get("user_text", "")}\"\"\"
+
+Response guidelines:
+- ALWAYS respond in Bahasa Indonesia — the user communicates in Indonesian
+- Acknowledge their feelings warmly and reference the analysis results naturally
+- Ask open-ended follow-up questions to explore deeper
+- {"PRIORITIZE safety. Calmly encourage them to contact Into The Light Indonesia at 119 ext 8. Be non-judgmental and stay present." if is_suicidal else "Offer emotional support and practical coping strategies"}
+- Do NOT diagnose. Use warm, conversational language — not clinical terms
+- Keep responses to 3–4 sentences max so it feels like a real conversation
+"""
+        else:
+            system_context = """You are Serenica, an empathetic and supportive AI mental health companion.
+
+The user has NOT yet completed a reflection session (no analysis results available).
+
+Response guidelines:
+- ALWAYS respond in Bahasa Indonesia — the user communicates in Indonesian
+- Greet them warmly and listen with empathy if they share how they feel
+- After 1–2 exchanges, naturally suggest they try the Reflect feature:
+  suggest something like: "Ngomong-ngomong, kamu bisa coba fitur Reflect di tab 🏠 Home — tulis perasaanmu di sana dan AI kami akan bantu analisis emosimu lebih dalam."
+- Don't push too hard, but consistently recommend it after they open up
+- Stay supportive even if they're not ready to try the Reflect feature yet
+- Keep responses to 3–4 sentences max
+"""
+
+        if (
+            not st.session_state.chat_messages
+            and not st.session_state.get("chat_greeted")
+        ):
+            if has_result:
+                primary_em = st.session_state.analysis_result.get("primary_emotion", "")
+                greeting_prompt = (
+                    f"Give a warm, brief greeting to the user in Bahasa Indonesia. "
+                    f"Mention that you can see their reflection results (primary emotion: '{primary_em}') "
+                    f"and ask if they'd like to talk more about how they're feeling. "
+                    f"Keep it to 2–3 sentences, natural and warm."
+                )
+            else:
+                greeting_prompt = (
+                    "Give a warm, brief greeting in Bahasa Indonesia to a new Serenica user. "
+                    "Introduce yourself as an AI mental health companion. "
+                    "Ask how they're feeling today. Keep it to 2–3 sentences."
+                )
+
+            try:
+                from utils.chat_client import get_ai_response
+                greeting = get_ai_response(
+                    api_key=st.session_state.api_key,
+                    messages=[{"role": "user", "content": greeting_prompt}],
+                    system_context=system_context,
+                )
+                st.session_state.chat_messages.append({
+                    "role": "assistant",
+                    "content": greeting,
+                })
+                st.session_state.chat_greeted = True
+                st.rerun()
+            except Exception:
+                pass
+
+        # ── Render chat history ───────────────────────────────────
         chat_box = st.container(height=400, border=True)
         with chat_box:
             for msg in st.session_state.chat_messages:
                 with st.chat_message(msg["role"]):
                     st.write(msg["content"])
 
-        # Input
-        if prompt := st.chat_input("Type a message..."):
+        # ── Chat input ────────────────────────────────────────────
+        if prompt := st.chat_input("Ketik pesanmu..."):
             st.session_state.chat_messages.append({"role": "user", "content": prompt})
 
-            # Context-aware system prompt if analysis exists
-            context = ""
-            if st.session_state.analysis_result:
-                em = st.session_state.analysis_result["primary_emotion"]
-                context = (
-                    f"The user has been identified as experiencing '{em}'. "
-                    "Respond with empathy and psychological support."
-                )
-
-            # Try calling AI API
             try:
                 from utils.chat_client import get_ai_response
                 ai_reply = get_ai_response(
                     api_key=st.session_state.api_key,
                     messages=st.session_state.chat_messages,
-                    system_context=context,
+                    system_context=system_context,
                 )
             except Exception as e:
-                ai_reply = f"(Chat unavailable: {e})"
+                ai_reply = f"(Chat tidak tersedia: {e})"
 
-            st.session_state.chat_messages.append({"role": "assistant", "content": ai_reply})
+            st.session_state.chat_messages.append({
+                "role": "assistant",
+                "content": ai_reply,
+            })
             st.rerun()
 
-        if st.button("🗑️ Clear chat"):
+        # ── Tombol hapus chat + reset greeting flag ───────────────
+        if st.button("🗑️ Hapus chat"):
             st.session_state.chat_messages = []
+            st.session_state.chat_greeted = False
             st.rerun()
