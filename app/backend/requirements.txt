@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+mlflow
+pandas
+numpy
+requests
+transformers
+scikit-learn
+joblib
+safetensors
