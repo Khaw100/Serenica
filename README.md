@@ -2,6 +2,8 @@
 
 **Serenica** is an AI-powered mental health companion that helps users reflect on their emotions, understand their mental state, and connect with the right support. It uses custom-trained machine learning models for multi-label text classification and an OpenAI-powered chat companion — all served through a FastAPI backend and a Streamlit frontend.
 
+![Serenica companion](https://terrarium.rakhawiratama.com/api/creature.svg?user=Khaw100&repo=Serenica)
+
 ---
 
 ## 🧠 Features
